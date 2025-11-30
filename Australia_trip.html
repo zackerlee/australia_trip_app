@@ -19,18 +19,28 @@
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .add-zone { opacity: 0; transition: all 0.2s ease; }
         .add-zone:hover { opacity: 1; height: 30px; }
-        .is-dragging { opacity: 0.4; border: 2px dashed #3D9FBD; background: #0f172a; }
         
-        /* --- CRITICAL IOS FIXES --- */
-        /* 1. Disable text selection globally on draggable items */
-        .ios-no-select {
-            -webkit-touch-callout: none; /* Stops the magnifying glass/menu */
-            -webkit-user-select: none;   /* Stops text highlighting */
-            user-select: none;
-            -webkit-tap-highlight-color: transparent; /* Removes gray tap box */
+        /* Dragging Visuals */
+        .is-dragging { 
+            opacity: 0.3; 
+            border: 2px dashed #3D9FBD; 
+            background: #0f172a; 
+            transform: scale(0.95);
+        }
+        
+        /* Card Transitions for smooth swapping */
+        .card-item {
+            transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s;
         }
 
-        /* 2. Re-enable text selection ONLY for inputs so you can still type */
+        /* --- CRITICAL IOS FIXES --- */
+        .ios-no-select {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         .ios-no-select input, 
         .ios-no-select textarea {
             -webkit-user-select: text !important;
@@ -50,7 +60,8 @@
             color: white;
             font-family: sans-serif;
             border: 1px solid #3D9FBD;
-            transform: scale(1.05);
+            transform: scale(1.05) rotate(2deg); /* Added slight tilt for effect */
+            width: 300px; /* Force width for better drag image */
         }
     </style>
 </head>
@@ -61,9 +72,8 @@
         var MobileDragDrop = MobileDragDrop || {};
         MobileDragDrop.polyfill({
             dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
-            holdToDrag: 300 // 300ms delay
+            holdToDrag: 200 // Faster response: 200ms
         });
-        // Prevent default only when strictly necessary, but allow scrolling
         window.addEventListener( 'touchmove', function() {}, {passive: false});
     </script>
 
@@ -85,7 +95,7 @@
         const Edit2 = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>);
 
         // --- Config ---
-        const LOCAL_STORAGE_KEY = "travel-timeline-events-v15-ios-fix";
+        const LOCAL_STORAGE_KEY = "travel-timeline-events-v16-live-sort";
         const PRIMARY_COLOR = "#3D9FBD";
         const DATE_TABS = [
             { label: "2/13", iso: "2026-02-13" }, { label: "2/14", iso: "2026-02-14" },
@@ -189,21 +199,39 @@
             const handleDeleteEvent = (id) => { if(confirm("Delete this event?")) setEvents(prev => prev.filter(ev => ev.id !== id)); };
             const handleUpdateField = (id, field, value) => { setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, [field]: value } : ev)); };
 
-            // Drag Handlers
-            const handleDragStart = (e, id) => { setDraggedEventId(id); e.dataTransfer.effectAllowed = "move"; };
+            // --- Drag Handlers (Live Sorting) ---
+            const handleDragStart = (e, id) => { 
+                setDraggedEventId(id); 
+                e.dataTransfer.effectAllowed = "move"; 
+            };
+
             const handleDragOver = (e) => { e.preventDefault(); };
-            const handleDrop = (e, targetId) => {
-                e.preventDefault();
-                if (draggedEventId === targetId) return;
+
+            // NEW: Live Swap Logic
+            const handleDragEnter = (targetId) => {
+                if (!draggedEventId || draggedEventId === targetId) return;
+
+                // 1. Get current day list
                 const currentList = events.filter(e => e.date === selectedDate);
+                
+                // 2. Find Indexes
                 const fromIndex = currentList.findIndex(e => e.id === draggedEventId);
                 const toIndex = currentList.findIndex(e => e.id === targetId);
+                
                 if (fromIndex === -1 || toIndex === -1) return;
+
+                // 3. Swap in local array
                 const newList = [...currentList];
                 const [moved] = newList.splice(fromIndex, 1);
                 newList.splice(toIndex, 0, moved);
+
+                // 4. Update Main State Immediately
                 const otherDaysEvents = events.filter(e => e.date !== selectedDate);
                 setEvents([...otherDaysEvents, ...newList]);
+            };
+
+            const handleDrop = (e) => {
+                e.preventDefault();
                 setDraggedEventId(null);
             };
 
@@ -265,12 +293,14 @@
                                 return (
                                     <React.Fragment key={ev.id}>
                                         <div 
-                                            /* --- iOS FIX: Added class "ios-no-select" to draggable container --- */
-                                            className={`flex gap-3 group relative transition-opacity duration-200 ios-no-select ${isDragging ? "is-dragging rounded-xl" : ""}`}
+                                            /* --- iOS FIX: ios-no-select + Drag Events --- */
+                                            className={`flex gap-3 group relative transition-all duration-200 ios-no-select card-item ${isDragging ? "is-dragging rounded-xl" : ""}`}
                                             draggable={!isEditing}
                                             onDragStart={(e) => handleDragStart(e, ev.id)}
                                             onDragOver={handleDragOver}
-                                            onDrop={(e) => handleDrop(e, ev.id)}
+                                            /* NEW: Live Swap Logic attached here */
+                                            onDragEnter={() => handleDragEnter(ev.id)}
+                                            onDrop={handleDrop}
                                         >
                                             <div className="absolute -left-4 top-4 opacity-0 group-hover:opacity-40 cursor-grab active:cursor-grabbing">
                                                 <GripVertical size={14} className="text-slate-500"/>
@@ -286,14 +316,12 @@
                                                     <div className="flex justify-between items-start gap-3">
                                                         <div className="min-w-0 flex-1">
                                                             <div className="flex items-center gap-2 mb-1">
-                                                                {/* TIME */}
                                                                 {isEditing ? (
                                                                     <input type="time" className="text-xs bg-slate-800 text-white border border-blue-500/50 rounded px-1 py-0 outline-none" value={ev.time} onClick={(e) => e.stopPropagation()} onChange={(e) => handleUpdateField(ev.id, 'time', e.target.value)} />
                                                                 ) : (
                                                                     <span className={`font-mono text-xs cursor-pointer hover:text-blue-400 hover:underline decoration-dashed transition-colors ${isCurrent ? `text-[${PRIMARY_COLOR}] font-bold` : "text-slate-400"}`} onClick={(e) => { e.stopPropagation(); setEditingId(ev.id); }} title="Click to Edit">{ev.time}</span>
                                                                 )}
                                                                 
-                                                                {/* TYPE DROPDOWN */}
                                                                 {isEditing ? (
                                                                     <select className="text-[10px] bg-slate-800 border border-blue-500/50 rounded px-1 py-0 outline-none text-slate-300 ml-2" value={ev.type} onClick={(e) => e.stopPropagation()} onChange={(e) => handleUpdateField(ev.id, 'type', e.target.value)}>
                                                                         <option value="transport">交通</option><option value="activity">行程</option><option value="food">美食</option><option value="stay">住宿</option>
@@ -303,7 +331,6 @@
                                                                 )}
                                                             </div>
 
-                                                            {/* TITLE */}
                                                             {isEditing ? (
                                                                 <div className="flex items-center gap-2 mt-1" onClick={e => e.stopPropagation()}>
                                                                     <input type="text" className="bg-slate-800 border border-blue-500/50 rounded px-2 py-1 text-sm font-bold text-white w-full outline-none focus:ring-1 focus:ring-blue-500" value={ev.title} placeholder="Event Title..." autoFocus onChange={(e) => handleUpdateField(ev.id, 'title', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && setEditingId(null)} />
@@ -318,7 +345,6 @@
                                                     </div>
                                                     {!isEditing && <p className="text-xs text-slate-300 mt-2 line-clamp-2">{ev.shortDescription}</p>}
                                                     
-                                                    {/* Actions */}
                                                     <div className="absolute top-3 right-3 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
                                                         <button onClick={() => handleToggleChecked(ev.id)} className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 transition-all ${isChecked ? "bg-emerald-500/20 border-emerald-500 text-emerald-500" : "border-slate-700 text-slate-600 hover:bg-slate-800"}`}>{isChecked && "✓"}</button>
                                                         <button onClick={() => handleDeleteEvent(ev.id)} className="w-8 h-8 rounded-full border border-slate-700 text-slate-500 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
