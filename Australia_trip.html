@@ -4,64 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Australia Chill Trip 2026</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
     <style>
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .add-zone { opacity: 0; transition: all 0.2s ease; }
+        .add-zone:hover { opacity: 1; height: 30px; }
+        .is-dragging { opacity: 0.5; border: 2px dashed #3D9FBD; background: #0f172a; }
+        /* Time Input Styling for Dark Mode */
+        input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; text-align: center; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-50 h-screen overflow-hidden">
     <div id="root" class="h-full"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- Icons (SVG) ---
-        const Plane = ({ size = 16, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12h20"/><path d="M13 2l9 10-9 10"/><path d="M2 12l5-5m0 10l-5-5"/></svg>
-        );
-        const Camera = ({ size = 16, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-        );
-        const Utensils = ({ size = 16, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
-        );
-        const Bed = ({ size = 16, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
-        );
-        const MapPin = ({ size = 16, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-        );
-        const ChevronUp = ({ size = 16, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m18 15-6-6-6 6"/></svg>
-        );
-        const ImageIcon = ({ size = 16, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-        );
+        // --- Icons ---
+        const Plane = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12h20"/><path d="M13 2l9 10-9 10"/><path d="M2 12l5-5m0 10l-5-5"/></svg>);
+        const Camera = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>);
+        const Utensils = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>);
+        const Bed = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>);
+        const MapPin = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>);
+        const ChevronUp = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m18 15-6-6-6 6"/></svg>);
+        const ImageIcon = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>);
+        const Plus = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>);
+        const Trash2 = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>);
+        const GripVertical = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>);
+        const Check = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>);
+        const Edit2 = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>);
 
         // --- Config ---
-        const LOCAL_STORAGE_KEY = "travel-timeline-events-v5";
+        const LOCAL_STORAGE_KEY = "travel-timeline-events-v12-click-edit";
         const PRIMARY_COLOR = "#3D9FBD";
-        const SECONDARY_COLOR = "#CF171A";
-
         const DATE_TABS = [
-            { label: "2/13", iso: "2026-02-13" },
-            { label: "2/14", iso: "2026-02-14" },
-            { label: "2/15", iso: "2026-02-15" },
-            { label: "2/16", iso: "2026-02-16" },
-            { label: "2/17", iso: "2026-02-17" },
-            { label: "2/18", iso: "2026-02-18" },
-            { label: "2/19", iso: "2026-02-19" },
-            { label: "2/20", iso: "2026-02-20" },
-            { label: "2/21", iso: "2026-02-21" },
-            { label: "2/22", iso: "2026-02-22" },
+            { label: "2/13", iso: "2026-02-13" }, { label: "2/14", iso: "2026-02-14" },
+            { label: "2/15", iso: "2026-02-15" }, { label: "2/16", iso: "2026-02-16" },
+            { label: "2/17", iso: "2026-02-17" }, { label: "2/18", iso: "2026-02-18" },
+            { label: "2/19", iso: "2026-02-19" }, { label: "2/20", iso: "2026-02-20" },
+            { label: "2/21", iso: "2026-02-21" }, { label: "2/22", iso: "2026-02-22" },
             { label: "2/23", iso: "2026-02-23" },
         ];
 
@@ -101,10 +87,11 @@
         const TravelTimelineApp = () => {
             const [selectedDate, setSelectedDate] = useState(DATE_TABS[0].iso);
             const [expandedEventId, setExpandedEventId] = useState(null);
-            const [checkedMap, setCheckedMap] = useState({});
-            const [notesMap, setNotesMap] = useState({});
             const [events, setEvents] = useState([]);
+            const [draggedEventId, setDraggedEventId] = useState(null);
+            const [editingId, setEditingId] = useState(null);
 
+            // Init & Persistence
             useEffect(() => {
                 try {
                     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -118,11 +105,57 @@
 
             const now = new Date();
             const eventsForSelectedDate = useMemo(() => 
-                events.filter(e => e.date === selectedDate).sort((a, b) => a.time.localeCompare(b.time)),
+                events.filter(e => e.date === selectedDate), 
             [events, selectedDate]);
 
-            const handleToggleChecked = (id) => setCheckedMap(prev => ({ ...prev, [id]: !prev[id] }));
+            // --- Handlers ---
+            const handleToggleChecked = (id) => setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, isCompleted: !ev.isCompleted } : ev));
+            const handleNoteChange = (id, text) => setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, userNotes: text } : ev));
             const addImageToEvent = (id, data) => setEvents(prev => prev.map(e => e.id === id ? { ...e, images: [...(e.images || []), data] } : e));
+            const handleDeleteEvent = (id) => { if(confirm("Delete this event?")) setEvents(prev => prev.filter(ev => ev.id !== id)); };
+
+            const handleUpdateField = (id, field, value) => {
+                setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, [field]: value } : ev));
+            };
+
+            const handleDragStart = (e, id) => { setDraggedEventId(id); e.dataTransfer.effectAllowed = "move"; };
+            const handleDragOver = (e) => { e.preventDefault(); };
+            const handleDrop = (e, targetId) => {
+                e.preventDefault();
+                if (draggedEventId === targetId) return;
+                const currentList = events.filter(e => e.date === selectedDate);
+                const fromIndex = currentList.findIndex(e => e.id === draggedEventId);
+                const toIndex = currentList.findIndex(e => e.id === targetId);
+                if (fromIndex === -1 || toIndex === -1) return;
+                const newList = [...currentList];
+                const [moved] = newList.splice(fromIndex, 1);
+                newList.splice(toIndex, 0, moved);
+                const otherDaysEvents = events.filter(e => e.date !== selectedDate);
+                setEvents([...otherDaysEvents, ...newList]);
+                setDraggedEventId(null);
+            };
+
+            const handleAddEvent = (indexToInsert = -1) => {
+                const newId = `new-${Date.now()}`;
+                const newEvent = { 
+                    id: newId, 
+                    date: selectedDate, 
+                    time: "12:00", 
+                    title: "", 
+                    type: "activity", 
+                    location: "", 
+                    shortDescription: "New item", 
+                    isCompleted: false, 
+                    images: [] 
+                };
+                const currentList = events.filter(e => e.date === selectedDate);
+                const otherDaysEvents = events.filter(e => e.date !== selectedDate);
+                let newCurrentList = [...currentList];
+                if (indexToInsert === -1) newCurrentList.push(newEvent); else newCurrentList.splice(indexToInsert, 0, newEvent);
+                setEvents([...otherDaysEvents, ...newCurrentList]);
+                setEditingId(newId);
+            };
+
             const getCategoryIcon = (type) => {
                 if (type === 'transport') return <Plane className="text-blue-400" />;
                 if (type === 'food') return <Utensils className="text-orange-400" />;
@@ -131,6 +164,13 @@
                 return <MapPin className="text-slate-400" />;
             };
             const typeLabels = { transport: "交通", activity: "行程", food: "美食", stay: "住宿" };
+
+            const AddZone = ({ index }) => (
+                <div className="add-zone h-2 w-full flex items-center justify-center cursor-pointer group my-1 relative z-10" onClick={() => handleAddEvent(index)}>
+                    <div className="w-full h-px bg-slate-800 group-hover:bg-blue-500/50 transition-colors relative"></div>
+                    <div className="absolute bg-slate-900 border border-blue-500/50 text-blue-400 text-[10px] px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100 flex items-center gap-1 shadow-lg shadow-blue-900/20"><Plus size={12} /> Insert</div>
+                </div>
+            );
 
             return (
                 <div className="flex flex-col h-full bg-slate-950 text-slate-50 font-sans">
@@ -148,39 +188,112 @@
                         </div>
                     </header>
                     <main className="flex-1 overflow-y-auto p-4 pb-20">
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 space-y-4 backdrop-blur-sm min-h-[300px]">
-                            {eventsForSelectedDate.length === 0 && <div className="text-center text-slate-500 py-10">No events today. 🌿</div>}
+                        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 space-y-0 backdrop-blur-sm min-h-[300px]">
+                            {eventsForSelectedDate.length === 0 && <div className="text-center py-10"><div className="text-slate-500 mb-2">No events today. 🌿</div><button onClick={() => handleAddEvent(-1)} className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-slate-300 transition-colors">+ Add First Event</button></div>}
+                            
+                            {eventsForSelectedDate.length > 0 && <AddZone index={0} />}
+
                             {eventsForSelectedDate.map((ev, i) => {
                                 const isCurrent = new Date(`${ev.date}T${ev.time}`).getTime() - now.getTime() < 3600000 && new Date(`${ev.date}T${ev.time}`).getTime() > now.getTime();
                                 const isExpanded = expandedEventId === ev.id;
-                                const isChecked = checkedMap[ev.id];
+                                const isChecked = ev.isCompleted; 
+                                const isDragging = draggedEventId === ev.id;
+                                const isEditing = editingId === ev.id;
+
                                 return (
-                                    <div key={ev.id} className="flex gap-3 group">
-                                        <div className="flex flex-col items-center mt-1">
-                                            <div className={`w-3 h-3 rounded-full border-[2px] z-10 ${isCurrent ? `bg-[${PRIMARY_COLOR}] border-[${PRIMARY_COLOR}] shadow-[0_0_10px_${PRIMARY_COLOR}]` : isChecked ? "bg-emerald-500 border-emerald-500" : `bg-slate-950 border-[${PRIMARY_COLOR}]`}`}></div>
-                                            {i !== eventsForSelectedDate.length - 1 && <div className="w-px flex-1 bg-slate-800 my-1 group-hover:bg-slate-700"></div>}
-                                        </div>
-                                        <div className={`flex-1 border rounded-xl overflow-hidden transition-all ${isChecked ? "opacity-60 grayscale" : "bg-slate-900/80"} ${isCurrent ? `ring-1 ring-[${PRIMARY_COLOR}] shadow-lg` : "border-slate-700"}`} onClick={() => setExpandedEventId(isExpanded ? null : ev.id)}>
-                                            <div className="p-3">
-                                                <div className="flex justify-between items-start gap-3">
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-2 mb-1"><span className={`font-mono text-xs ${isCurrent ? `text-[${PRIMARY_COLOR}] font-bold` : "text-slate-400"}`}>{ev.time}</span><span className="text-[10px] px-1.5 rounded border border-slate-700 text-slate-400">{typeLabels[ev.type]}</span></div>
-                                                        <h3 className="font-semibold truncate flex items-center gap-2 text-slate-100"><span className="opacity-90 shrink-0">{getCategoryIcon(ev.type)}</span><span className="truncate">{ev.title}</span></h3>
-                                                        {ev.location && <div className="text-xs text-slate-400 mt-1 flex items-center gap-1"><MapPin size={12}/> {ev.location}</div>}
-                                                    </div>
-                                                    <button onClick={(e) => {e.stopPropagation(); handleToggleChecked(ev.id)}} className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 ${isChecked ? "bg-emerald-500/20 border-emerald-500 text-emerald-500" : "border-slate-700 text-slate-600"}`}>{isChecked && "✓"}</button>
-                                                </div>
-                                                <p className="text-xs text-slate-300 mt-2 line-clamp-2">{ev.shortDescription}</p>
+                                    <React.Fragment key={ev.id}>
+                                        <div 
+                                            className={`flex gap-3 group relative transition-opacity duration-200 ${isDragging ? "is-dragging rounded-xl" : ""}`}
+                                            draggable={!isEditing}
+                                            onDragStart={(e) => handleDragStart(e, ev.id)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, ev.id)}
+                                        >
+                                            <div className="absolute -left-4 top-4 opacity-0 group-hover:opacity-40 cursor-grab active:cursor-grabbing">
+                                                <GripVertical size={14} className="text-slate-500"/>
                                             </div>
-                                            {isExpanded && <div className="bg-slate-950/50 border-t border-slate-800 p-3 space-y-3 animate-in slide-in-from-top-2">
-                                                <textarea onClick={e=>e.stopPropagation()} value={notesMap[ev.id]||""} onChange={e=>setNotesMap(p=>({...p,[ev.id]:e.target.value}))} className="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-200 focus:outline-none focus:border-[color:#3D9FBD]" placeholder="Notes..." rows={2}></textarea>
-                                                {ev.imageUrl && <img src={ev.imageUrl} className="w-full h-32 object-cover rounded-lg border border-slate-700" />}
-                                                {ev.images?.map((src,k)=><img key={k} src={src} className="w-full h-24 object-cover rounded-lg border border-slate-700"/>)}
-                                                <label onClick={e=>e.stopPropagation()} className="block w-full py-2 border border-dashed border-slate-600 rounded-lg text-center text-xs text-slate-400 cursor-pointer hover:bg-slate-800"><span className="flex items-center justify-center gap-2"><ImageIcon size={14}/> Add Photo</span><input type="file" accept="image/*" className="hidden" onChange={e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=()=>addImageToEvent(ev.id,r.result);r.readAsDataURL(f)}}}/></label>
-                                                <div className="flex justify-center"><ChevronUp size={16} className="text-slate-600"/></div>
-                                            </div>}
+
+                                            <div className="flex flex-col items-center mt-1 relative">
+                                                <div className={`w-3 h-3 rounded-full border-[2px] z-10 ${isCurrent ? `bg-[${PRIMARY_COLOR}] border-[${PRIMARY_COLOR}] shadow-[0_0_10px_${PRIMARY_COLOR}]` : isChecked ? "bg-emerald-500 border-emerald-500" : `bg-slate-950 border-[${PRIMARY_COLOR}]`}`}></div>
+                                                <div className="w-px flex-1 bg-slate-800 my-1 group-hover:bg-slate-700 absolute top-3 bottom-[-20px]"></div>
+                                            </div>
+
+                                            <div className={`flex-1 border rounded-xl overflow-hidden transition-all relative ${isChecked ? "opacity-60 grayscale" : "bg-slate-900/80"} ${isCurrent ? `ring-1 ring-[${PRIMARY_COLOR}] shadow-lg` : "border-slate-700"}`} onClick={() => !isEditing && setExpandedEventId(isExpanded ? null : ev.id)}>
+                                                <div className="p-3 pr-10">
+                                                    <div className="flex justify-between items-start gap-3">
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                {/* TIME - CLICK TO EDIT */}
+                                                                {isEditing ? (
+                                                                    <input type="time" className="text-xs bg-slate-800 text-white border border-blue-500/50 rounded px-1 py-0 outline-none" value={ev.time} onClick={(e) => e.stopPropagation()} onChange={(e) => handleUpdateField(ev.id, 'time', e.target.value)} />
+                                                                ) : (
+                                                                    <span 
+                                                                        className={`font-mono text-xs cursor-pointer hover:text-blue-400 hover:underline decoration-dashed transition-colors ${isCurrent ? `text-[${PRIMARY_COLOR}] font-bold` : "text-slate-400"}`}
+                                                                        onClick={(e) => { e.stopPropagation(); setEditingId(ev.id); }}
+                                                                        title="Click to Edit"
+                                                                    >
+                                                                        {ev.time}
+                                                                    </span>
+                                                                )}
+                                                                
+                                                                {/* TYPE DROPDOWN (EDIT MODE) */}
+                                                                {isEditing ? (
+                                                                    <select 
+                                                                        className="text-[10px] bg-slate-800 border border-blue-500/50 rounded px-1 py-0 outline-none text-slate-300 ml-2"
+                                                                        value={ev.type}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        onChange={(e) => handleUpdateField(ev.id, 'type', e.target.value)}
+                                                                    >
+                                                                        <option value="transport">交通</option>
+                                                                        <option value="activity">行程</option>
+                                                                        <option value="food">美食</option>
+                                                                        <option value="stay">住宿</option>
+                                                                    </select>
+                                                                ) : (
+                                                                    <span className="text-[10px] px-1.5 rounded border border-slate-700 text-slate-400 ml-2">{typeLabels[ev.type]}</span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* TITLE - CLICK TO EDIT */}
+                                                            {isEditing ? (
+                                                                <div className="flex items-center gap-2 mt-1" onClick={e => e.stopPropagation()}>
+                                                                    <input type="text" className="bg-slate-800 border border-blue-500/50 rounded px-2 py-1 text-sm font-bold text-white w-full outline-none focus:ring-1 focus:ring-blue-500" value={ev.title} placeholder="Event Title..." autoFocus onChange={(e) => handleUpdateField(ev.id, 'title', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && setEditingId(null)} />
+                                                                    <button onClick={() => setEditingId(null)} className="bg-emerald-600/20 text-emerald-500 border border-emerald-600/50 p-1 rounded hover:bg-emerald-600 hover:text-white transition-colors"><Check size={16} /></button>
+                                                                </div>
+                                                            ) : (
+                                                                <h3 
+                                                                    className="font-semibold truncate flex items-center gap-2 text-slate-100 cursor-pointer hover:text-blue-400 transition-colors"
+                                                                    onClick={(e) => { e.stopPropagation(); setEditingId(ev.id); }}
+                                                                    title="Click to Edit"
+                                                                >
+                                                                    <span className="opacity-90 shrink-0">{getCategoryIcon(ev.type)}</span>
+                                                                    <span className="truncate hover:underline decoration-dashed">{ev.title}</span>
+                                                                    <button className="opacity-0 group-hover:opacity-50 text-slate-500 ml-1"><Edit2 size={12} /></button>
+                                                                </h3>
+                                                            )}
+
+                                                            {ev.location && !isEditing && <div className="text-xs text-slate-400 mt-1 flex items-center gap-1"><MapPin size={12}/> {ev.location}</div>}
+                                                        </div>
+                                                    </div>
+                                                    {!isEditing && <p className="text-xs text-slate-300 mt-2 line-clamp-2">{ev.shortDescription}</p>}
+                                                    
+                                                    {/* Actions */}
+                                                    <div className="absolute top-3 right-3 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+                                                        <button onClick={() => handleToggleChecked(ev.id)} className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 transition-all ${isChecked ? "bg-emerald-500/20 border-emerald-500 text-emerald-500" : "border-slate-700 text-slate-600 hover:bg-slate-800"}`}>{isChecked && "✓"}</button>
+                                                        <button onClick={() => handleDeleteEvent(ev.id)} className="w-8 h-8 rounded-full border border-slate-700 text-slate-500 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
+                                                    </div>
+                                                </div>
+                                                {isExpanded && !isEditing && <div className="bg-slate-950/50 border-t border-slate-800 p-3 space-y-3 animate-in slide-in-from-top-2">
+                                                    <textarea onClick={e=>e.stopPropagation()} value={ev.userNotes || ""} onChange={e=> handleNoteChange(ev.id, e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-200 focus:outline-none focus:border-[color:#3D9FBD]" placeholder="Notes..." rows={2}></textarea>
+                                                    {ev.imageUrl && <img src={ev.imageUrl} className="w-full h-32 object-cover rounded-lg border border-slate-700" />}
+                                                    {ev.images?.map((src,k)=><img key={k} src={src} className="w-full h-24 object-cover rounded-lg border border-slate-700"/>)}
+                                                    <label onClick={e=>e.stopPropagation()} className="block w-full py-2 border border-dashed border-slate-600 rounded-lg text-center text-xs text-slate-400 cursor-pointer hover:bg-slate-800"><span className="flex items-center justify-center gap-2"><ImageIcon size={14}/> Add Photo</span><input type="file" accept="image/*" className="hidden" onChange={e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=()=>addImageToEvent(ev.id,r.result);r.readAsDataURL(f)}}}/></label>
+                                                    <div className="flex justify-center"><ChevronUp size={16} className="text-slate-600"/></div>
+                                                </div>}
+                                            </div>
                                         </div>
-                                    </div>
+                                        <AddZone index={i + 1} />
+                                    </React.Fragment>
                                 );
                             })}
                         </div>
