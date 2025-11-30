@@ -4,82 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Australia Chill Trip 2026</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
     <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/scroll-behaviour.min.js"></script>
-
     <style>
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .add-zone { opacity: 0; transition: all 0.2s ease; }
         .add-zone:hover { opacity: 1; height: 30px; }
-        
-        /* Dragging Visuals */
-        .is-dragging { 
-            opacity: 0.3; 
-            border: 2px dashed #3D9FBD; 
-            background: #0f172a; 
-            transform: scale(0.95);
-        }
-        
-        /* --- PERFORMANCE FIX: GPU Acceleration --- */
-        .card-item {
-            /* Smooth transition for sorting swap */
-            transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
-            /* Hint to browser to prioritize rendering these properties */
-            will-change: transform, opacity;
-        }
-
-        /* IOS Fixes */
-        .ios-no-select {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .ios-no-select input, 
-        .ios-no-select textarea {
-            -webkit-user-select: text !important;
-            user-select: text !important;
-            -webkit-touch-callout: default !important;
-        }
-
+        .is-dragging { opacity: 0.4; border: 2px dashed #3D9FBD; background: #0f172a; }
+        .no-select { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; text-align: center; }
-
-        .dnd-poly-drag-image {
-            opacity: 0.9 !important;
-            background: #1e293b !important;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            padding: 10px;
-            color: white;
-            font-family: sans-serif;
-            border: 1px solid #3D9FBD;
-            transform: scale(1.05) rotate(2deg);
-            width: 300px; 
-        }
+        .dnd-poly-drag-image { opacity: 0.9 !important; background: #1e293b !important; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); padding: 10px; color: white; font-family: sans-serif; border: 1px solid #3D9FBD; transform: scale(1.05); }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-50 h-screen overflow-hidden">
     <div id="root" class="h-full"></div>
-
     <script>
         var MobileDragDrop = MobileDragDrop || {};
-        MobileDragDrop.polyfill({
-            dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
-            holdToDrag: 200 
-        });
-        window.addEventListener( 'touchmove', function() {}, {passive: false});
+        MobileDragDrop.polyfill({ dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride, holdToDrag: 300 });
+        document.addEventListener("touchmove", function(e) {}, {passive: false});
     </script>
-
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
@@ -98,7 +48,7 @@
         const Edit2 = ({ size = 16, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>);
 
         // --- Config ---
-        const LOCAL_STORAGE_KEY = "travel-timeline-events-v17-performance";
+        const LOCAL_STORAGE_KEY = "travel-timeline-events-v15-drag-fix";
         const PRIMARY_COLOR = "#3D9FBD";
         const DATE_TABS = [
             { label: "2/13", iso: "2026-02-13" }, { label: "2/14", iso: "2026-02-14" },
@@ -149,8 +99,6 @@
             const [draggedEventId, setDraggedEventId] = useState(null);
             const [editingId, setEditingId] = useState(null);
             const [processingImage, setProcessingImage] = useState(false);
-            // NEW: Track dragging state
-            const [isDragActive, setIsDragActive] = useState(false);
 
             useEffect(() => {
                 try {
@@ -159,15 +107,13 @@
                 } catch (e) { setEvents(INITIAL_EVENTS); }
             }, []);
 
-            // --- OPTIMIZED PERSISTENCE ---
-            // Only write to storage if NOT dragging. This prevents lag.
             useEffect(() => {
-                if (events.length > 0 && !isDragActive) {
+                if (events.length > 0) {
                     try {
                         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(events));
                     } catch (e) { console.error("Storage full", e); }
                 }
-            }, [events, isDragActive]);
+            }, [events]);
 
             const now = new Date();
             const eventsForSelectedDate = useMemo(() => 
@@ -206,36 +152,44 @@
             const handleDeleteEvent = (id) => { if(confirm("Delete this event?")) setEvents(prev => prev.filter(ev => ev.id !== id)); };
             const handleUpdateField = (id, field, value) => { setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, [field]: value } : ev)); };
 
-            // --- Drag Handlers (Live Sorting + Performance Fix) ---
+            // --- Drag Handlers (FIXED) ---
             const handleDragStart = (e, id) => { 
                 setDraggedEventId(id); 
-                setIsDragActive(true); // Stop LocalStorage
                 e.dataTransfer.effectAllowed = "move"; 
             };
+            
+            const handleDragOver = (e) => { 
+                e.preventDefault(); 
+            };
+            
+            // Safety Net: Ensure dragging state stops even if drop fails or is cancelled
+            const handleDragEnd = () => {
+                setDraggedEventId(null);
+            };
 
-            const handleDragOver = (e) => { e.preventDefault(); };
-
-            const handleDragEnter = (targetId) => {
-                if (!draggedEventId || draggedEventId === targetId) return;
-
+            const handleDrop = (e, targetId) => {
+                e.preventDefault();
+                // FIX: Check if dropped on self, and MUST clear state
+                if (draggedEventId === targetId) {
+                    setDraggedEventId(null); 
+                    return;
+                }
+                
                 const currentList = events.filter(e => e.date === selectedDate);
                 const fromIndex = currentList.findIndex(e => e.id === draggedEventId);
                 const toIndex = currentList.findIndex(e => e.id === targetId);
                 
-                if (fromIndex === -1 || toIndex === -1) return;
+                if (fromIndex === -1 || toIndex === -1) {
+                    setDraggedEventId(null);
+                    return;
+                }
 
                 const newList = [...currentList];
                 const [moved] = newList.splice(fromIndex, 1);
                 newList.splice(toIndex, 0, moved);
-
                 const otherDaysEvents = events.filter(e => e.date !== selectedDate);
                 setEvents([...otherDaysEvents, ...newList]);
-            };
-
-            const handleDrop = (e) => {
-                e.preventDefault();
                 setDraggedEventId(null);
-                setIsDragActive(false); // Resume LocalStorage (Triggers Save)
             };
 
             const handleAddEvent = (indexToInsert = -1) => {
@@ -296,13 +250,12 @@
                                 return (
                                     <React.Fragment key={ev.id}>
                                         <div 
-                                            /* Class 'card-item' added for GPU acceleration */
-                                            className={`flex gap-3 group relative card-item ios-no-select ${isDragging ? "is-dragging rounded-xl" : ""}`}
+                                            className={`flex gap-3 group relative transition-opacity duration-200 no-select ${isDragging ? "is-dragging rounded-xl" : ""}`}
                                             draggable={!isEditing}
                                             onDragStart={(e) => handleDragStart(e, ev.id)}
                                             onDragOver={handleDragOver}
-                                            onDragEnter={() => handleDragEnter(ev.id)}
-                                            onDrop={handleDrop}
+                                            onDragEnd={handleDragEnd} // FIX: Added Safety Net
+                                            onDrop={(e) => handleDrop(e, ev.id)}
                                         >
                                             <div className="absolute -left-4 top-4 opacity-0 group-hover:opacity-40 cursor-grab active:cursor-grabbing">
                                                 <GripVertical size={14} className="text-slate-500"/>
